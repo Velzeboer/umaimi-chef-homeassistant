@@ -1,0 +1,21 @@
+add_item:
+  target:
+    entity:
+      integration: umamilist
+      domain: todo
+  fields:
+    name:
+      required: true
+      example: Kipfilet
+      selector:
+        text:
+    quantity:
+      example: "2"
+      selector:
+        text:
+    frozen_on:
+      selector:
+        date:
+    notes:
+      selector:
+        text:

@@ -1,0 +1,54 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to your Umaimi Chef server",
+        "description": "Log in with your Umaimi Chef account. Home Assistant gets its own session; your password isn't stored.",
+        "data": {
+          "url": "Server address",
+          "email": "Email",
+          "password": "Password"
+        },
+        "data_description": {
+          "url": "For example http://192.168.1.10:8080 at home, or https://chef.example.ts.net"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Log in to Umaimi Chef again",
+        "description": "The session for {email} has ended. Enter the password to log in again."
+      }
+    },
+    "error": {
+      "invalid_auth": "Wrong email or password.",
+      "cannot_connect": "Can't reach the server. Check the address, and that the server is running."
+    },
+    "abort": {
+      "already_configured": "This Umaimi Chef account is already set up.",
+      "reauth_successful": "Logged in again."
+    }
+  },
+  "services": {
+    "add_item": {
+      "name": "Add to a list",
+      "description": "Adds an item to an Umaimi Chef inventory or shopping list, with its quantity (and on an inventory its date). The category last used for this name is filled in.",
+      "fields": {
+        "name": {
+          "name": "Name",
+          "description": "What to add."
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "For example 2, or 500 g."
+        },
+        "frozen_on": {
+          "name": "Date",
+          "description": "On an inventory: the day it went in; today if left out. Not used on a shopping list."
+        },
+        "notes": {
+          "name": "Notes",
+          "description": "Anything else to remember."
+        }
+      }
+    }
+  }
+}
