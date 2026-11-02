@@ -7,20 +7,30 @@
         "data": {
           "url": "Server address",
           "email": "Email",
-          "password": "Password"
+          "password": "Password",
+          "code": "Code (two-step login)"
         },
         "data_description": {
-          "url": "For example http://192.168.1.10:8080 at home, or https://chef.example.ts.net"
+          "url": "For example http://192.168.1.10:8080 at home, or https://chef.example.ts.net",
+          "code": "Only with two-step login on: the code your authenticator app shows now, or a recovery code. Home Assistant isn't asked for it again after this."
         }
       },
       "reauth_confirm": {
         "title": "Log in to Umaimi Chef again",
-        "description": "The session for {email} has ended. Enter the password to log in again."
+        "description": "The session for {email} has ended. Enter the password to log in again.",
+        "data": {
+          "password": "Password",
+          "code": "Code (two-step login)"
+        },
+        "data_description": {
+          "code": "Only with two-step login on: the code your authenticator app shows now, or a recovery code."
+        }
       }
     },
     "error": {
       "invalid_auth": "Wrong email or password.",
-      "cannot_connect": "Can't reach the server. Check the address, and that the server is running."
+      "cannot_connect": "Can't reach the server. Check the address, and that the server is running.",
+      "invalid_code": "Two-step login is on for this account: enter the code your authenticator app shows now (it may have changed while you typed)."
     },
     "abort": {
       "already_configured": "This Umaimi Chef account is already set up.",

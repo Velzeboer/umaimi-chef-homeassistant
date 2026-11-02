@@ -15,6 +15,14 @@ class UmamiListAuthError(UmamiListError):
     """Wrong email or password, or the session was ended."""
 
 
+class UmamiListCodeError(UmamiListError):
+    """Two-step login is on for the account: the code is missing, or isn't right."""
+
+
+class UmamiListForbidden(UmamiListError):
+    """The server said no (403): at login, a wrong code."""
+
+
 class UmamiListApi:
     """Talks to one UmamiList server as one user."""
 
@@ -23,11 +31,21 @@ class UmamiListApi:
         self.url = url.rstrip("/")
         self.token = token
 
-    async def login(self, email: str, password: str) -> dict[str, Any]:
-        """Logs in and keeps the session token. Returns {"token", "user"}."""
-        result = await self._request(
-            "POST", "/api/auth/login", {"email": email, "password": password, "device": "Home Assistant"}
-        )
+    async def login(self, email: str, password: str, code: str | None = None) -> dict[str, Any]:
+        """Logs in and keeps the session token. Returns {"token", "user"}.
+
+        `code`: from the authenticator app (or a recovery code), for an account with two-step login.
+        Home Assistant is only asked for it here; the session it gets doesn't need it again.
+        """
+        body = {"email": email, "password": password, "device": "Home Assistant"}
+        if code and code.strip():
+            body["code"] = code.strip()
+        try:
+            result = await self._request("POST", "/api/auth/login", body)
+        except UmamiListForbidden as err:
+            raise UmamiListCodeError(str(err)) from err
+        if result.get("twoStep"):
+            raise UmamiListCodeError("Two-step login is on: the code is needed")
         self.token = result["token"]
         return result
 
@@ -63,6 +81,8 @@ class UmamiListApi:
                 error = data.get("error") if isinstance(data, dict) else None
                 if resp.status == 401:
                     raise UmamiListAuthError(error or "Not logged in")
+                if resp.status == 403:
+                    raise UmamiListForbidden(error or "Not allowed")
                 if resp.status >= 400:
                     raise UmamiListError(error or f"The server returned HTTP {resp.status}")
                 return data

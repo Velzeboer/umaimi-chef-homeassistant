@@ -18,6 +18,8 @@ Home Assistant, from your own self-hosted Umaimi Chef server.
 2. Install **Umaimi Chef**, then restart Home Assistant.
 3. **Settings → Devices & services → Add integration → Umaimi Chef**: your server's address, and the email and
    password of your Umaimi Chef account. Home Assistant gets its own session; the password isn't stored.
+   With two-step login on, also fill in the code your authenticator app shows (or a recovery code); Home
+   Assistant isn't asked for it again after that.
 
 Had the card before as a file in `/config/www` with a dashboard resource? Remove both: the integration now loads
 the card itself.

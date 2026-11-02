@@ -1,7 +1,12 @@
 """End-to-end tests: config flow, the to-do entity and the add_item service against a real server."""
 
+import base64
 from datetime import date, timedelta
+import hashlib
+import hmac
 import json
+import struct
+import time
 import urllib.request
 
 from homeassistant import config_entries
@@ -178,6 +183,37 @@ async def test_shopping_list_is_a_todo_list_of_its_own(hass: HomeAssistant, serv
     await entry.runtime_data.async_refresh()
     await hass.async_block_till_done()
     assert hass.states.get("todo.bbq") is not None
+
+
+def _totp(secret: str, step: int) -> str:
+    """The authenticator app's code for a 30-second step (RFC 6238)."""
+    digest = hmac.new(base64.b32decode(secret), struct.pack(">Q", step), hashlib.sha1).digest()
+    offset = digest[-1] & 0x0F
+    return str((struct.unpack(">I", digest[offset:offset + 4])[0] & 0x7FFFFFFF) % 1_000_000).zfill(6)
+
+
+async def test_two_step_login_takes_the_code(hass: HomeAssistant, server: str, login, api_post) -> None:
+    token = login()
+    secret = api_post("/api/auth/two-step/start", {}, token)["secret"]
+    step = int(time.time()) // 30
+    api_post("/api/auth/two-step/confirm", {"code": _totp(secret, step)}, token)
+
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": config_entries.SOURCE_USER})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": server, "email": EMAIL, "password": PASSWORD}
+    )
+    assert result["errors"] == {"base": "invalid_code"}
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": server, "email": EMAIL, "password": PASSWORD, "code": "000000"}
+    )
+    assert result["errors"] == {"base": "invalid_code"}
+    # The next step's code: the one that turned it on can't be used twice.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": server, "email": EMAIL, "password": PASSWORD, "code": _totp(secret, step + 1)}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert hass.states.get(ENTITY) is not None
 
 
 async def test_ended_session_asks_to_log_in_again(hass: HomeAssistant, server: str) -> None:
