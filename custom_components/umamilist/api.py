@@ -49,6 +49,10 @@ class UmamiListApi:
         self.token = result["token"]
         return result
 
+    async def logout(self) -> None:
+        """Ends this session on the server."""
+        await self._request("POST", "/api/auth/logout")
+
     async def lists(self) -> list[dict[str, Any]]:
         return await self._request("GET", "/api/lists")
 

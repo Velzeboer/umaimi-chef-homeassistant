@@ -25,6 +25,20 @@
         "data_description": {
           "code": "Only with two-step login on: the code your authenticator app shows now, or a recovery code."
         }
+      },
+      "reconfigure": {
+        "title": "Change the server address",
+        "description": "Moved your Umaimi Chef server to another address? Log in there with the same account. Your lists, entities and dashboards stay as they are.",
+        "data": {
+          "url": "Server address",
+          "email": "Email",
+          "password": "Password",
+          "code": "Code (two-step login)"
+        },
+        "data_description": {
+          "url": "The new address, for example https://chef.example.com",
+          "code": "Only with two-step login on: the code your authenticator app shows now, or a recovery code."
+        }
       }
     },
     "error": {
@@ -34,7 +48,9 @@
     },
     "abort": {
       "already_configured": "This Umaimi Chef account is already set up.",
-      "reauth_successful": "Logged in again."
+      "reauth_successful": "Logged in again.",
+      "reconfigure_successful": "Moved to the new address.",
+      "wrong_account": "That's a different Umaimi Chef account. To use another account, add the integration again."
     }
   },
   "services": {

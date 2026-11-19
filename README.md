@@ -21,6 +21,9 @@ Home Assistant, from your own self-hosted Umaimi Chef server.
    With two-step login on, also fill in the code your authenticator app shows (or a recovery code); Home
    Assistant isn't asked for it again after that.
 
+Moved your server to another address? **Settings → Devices & services → Umaimi Chef → ⋮ → Reconfigure**: the new
+address and your password (and the code, with two-step login). Lists, entities and dashboards stay as they are.
+
 Had the card before as a file in `/config/www` with a dashboard resource? Remove both: the integration now loads
 the card itself.
 

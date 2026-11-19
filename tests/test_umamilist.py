@@ -1,13 +1,20 @@
 """End-to-end tests: config flow, the to-do entity and the add_item service against a real server."""
 
 import base64
+from collections.abc import Iterator
 from datetime import date, timedelta
 import hashlib
 import hmac
 import json
+import socket
+import socketserver
 import struct
+import threading
 import time
+import urllib.error
 import urllib.request
+
+import pytest
 
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigEntryState
@@ -235,6 +242,84 @@ async def test_ended_session_asks_to_log_in_again(hass: HomeAssistant, server: s
     assert result["reason"] == "reauth_successful"
     assert entry.data["token"] != token
     assert entry.state is ConfigEntryState.LOADED
+
+
+@pytest.fixture
+def second_address(server: str) -> Iterator[str]:
+    """The same server on a second address (another port, as a tunnel or a new domain would be)."""
+    target = ("127.0.0.1", int(server.rsplit(":", 1)[1]))
+    sockets: list[socket.socket] = []
+    threads: list[threading.Thread] = []
+
+    def copy(src: socket.socket, dst: socket.socket) -> None:
+        try:
+            while data := src.recv(65536):
+                dst.sendall(data)
+        except OSError:
+            pass
+
+    class Pipe(socketserver.BaseRequestHandler):
+        def handle(self) -> None:
+            upstream = socket.create_connection(target)
+            sockets.extend([upstream, self.request])
+            back = threading.Thread(target=copy, args=(upstream, self.request))
+            threads.append(back)
+            back.start()
+            copy(self.request, upstream)
+
+    class Proxy(socketserver.ThreadingTCPServer):
+        block_on_close = True
+
+    proxy = Proxy(("127.0.0.1", 0), Pipe)
+    loop = threading.Thread(target=proxy.serve_forever)
+    loop.start()
+    yield f"http://127.0.0.1:{proxy.server_address[1]}"
+    proxy.shutdown()
+    for sock in sockets:
+        try:
+            sock.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        sock.close()
+    proxy.server_close()
+    loop.join()
+    for thread in threads:
+        thread.join()
+
+
+async def test_reconfigure_moves_to_a_new_address(hass: HomeAssistant, server: str, second_address: str) -> None:
+    await _setup(hass, server)
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    old_token = entry.data["token"]
+    new_url = second_address
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_RECONFIGURE, "entry_id": entry.entry_id}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": new_url, "email": EMAIL, "password": "wrong password"}
+    )
+    assert result["errors"] == {"base": "invalid_auth"}
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": new_url + "/", "email": EMAIL, "password": PASSWORD}
+    )
+    await hass.async_block_till_done()
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["url"] == new_url
+    assert entry.data["token"] != old_token
+    assert "password" not in entry.data
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.get(ENTITY) is not None
+    # The old session was ended on the server.
+    try:
+        urllib.request.urlopen(urllib.request.Request(server + "/api/lists", headers={"Authorization": f"Bearer {old_token}"}))
+        raise AssertionError("The old session still works")
+    except urllib.error.HTTPError as err:
+        assert err.code == 401
 
 
 async def test_the_card_comes_with_the_integration(hass: HomeAssistant, server: str, hass_client) -> None:
