@@ -3,7 +3,7 @@
 from datetime import timedelta
 
 DOMAIN = "umamilist"
-VERSION = "0.2.0"
+VERSION = "0.4.1"
 
 # Where the integration serves the freezer card (it's loaded on every dashboard).
 CARD_URL = "/umamilist/umamilist-freezer-card.js"
